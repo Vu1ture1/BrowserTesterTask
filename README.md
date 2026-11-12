@@ -70,7 +70,7 @@ URL;Company Name;Language;Country;Postcode;City;Street;HouseNo
 
 ## Upload client
 
-`video_client.py` talks to the video upload web service (see the server's README). Start the service first with `dotnet run`.
+`video_client.py` talks to the video upload web service (see the server's README - https://github.com/Vu1ture1/BrowserTesterTaskServer). Start the service first with `dotnet run`.
 
 ```python
 from video_client import UploadVideo, GetVideoURL

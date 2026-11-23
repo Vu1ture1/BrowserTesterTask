@@ -1,6 +1,7 @@
 import mimetypes
 import os
 import sys
+import time
 
 import requests
 
@@ -33,19 +34,60 @@ def _video_url_from(response):
         )
 
 
+def zoom_sidecar_path(video_path):
+    """<video>.zoom.json written by qscript.py next to the video, or None."""
+    path = os.path.splitext(video_path)[0] + ".zoom.json"
+    return path if os.path.isfile(path) else None
+
+
 def UploadVideo(server_url: str, video_path: str, company_name: str) -> str:
-    """Uploads a video file to the server and returns its URL."""
+    """Uploads a video file to the server and returns its URL.
+
+    If <video>.zoom.json exists next to the video, it is uploaded too and the server
+    renders a zoomed copy in the background (see WaitForZoomedVideo).
+    """
     filename = os.path.basename(video_path)
     content_type = mimetypes.guess_type(filename)[0] or "video/webm"
+    sidecar = zoom_sidecar_path(video_path)
 
     with open(video_path, "rb") as f:
+        files = {"file": (filename, f, content_type)}
+        if sidecar:
+            with open(sidecar, "rb") as z:
+                files["zoom"] = (os.path.basename(sidecar), z.read(), "application/json")
         response = requests.post(
             _endpoint(server_url, "/upload"),
-            files={"file": (filename, f, content_type)},
+            files=files,
             data={"company_name": company_name},
             timeout=TIMEOUT,
         )
     return _video_url_from(response)
+
+
+def WaitForZoomedVideo(server_url: str, company_name: str, timeout: float = 300, poll: float = 2) -> str:
+    """Waits until the server has rendered the zoomed video and returns its URL.
+
+    Returns None if the video was uploaded without zoom events.
+    """
+    deadline = time.monotonic() + timeout
+    while True:
+        response = requests.get(
+            _endpoint(server_url, "/get_video_url"),
+            params={"company_name": company_name},
+            timeout=TIMEOUT,
+        )
+        _video_url_from(response)
+        info = response.json()
+        status = info.get("zoom_status")
+        if status == "done":
+            return info["processed_video_url"]
+        if status in (None, "none"):
+            return None
+        if status == "failed":
+            raise VideoServiceError("Zoom processing failed: {}".format(info.get("zoom_error")))
+        if time.monotonic() > deadline:
+            raise VideoServiceError("Zoom processing is still '{}' after {} s".format(status, timeout))
+        time.sleep(poll)
 
 
 def GetVideoURL(server_url: str, company_name: str) -> str:
@@ -62,13 +104,16 @@ def _main(argv):
     usage = (
         "usage:\n"
         "  python video_client.py upload <server_url> <video_path> <company_name>\n"
-        "  python video_client.py get    <server_url> <company_name>"
+        "  python video_client.py get    <server_url> <company_name>\n"
+        "  python video_client.py zoomed <server_url> <company_name>   (waits for the zoomed video)"
     )
     try:
         if len(argv) == 5 and argv[1] == "upload":
             print(UploadVideo(argv[2], argv[3], argv[4]))
         elif len(argv) == 4 and argv[1] == "get":
             print(GetVideoURL(argv[2], argv[3]))
+        elif len(argv) == 4 and argv[1] == "zoomed":
+            print(WaitForZoomedVideo(argv[2], argv[3]) or "No zoom events for this video.")
         else:
             print(usage, file=sys.stderr)
             return 2

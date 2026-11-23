@@ -53,6 +53,7 @@ def main():
     upload_video = None
     if args.server:
         from video_client import UploadVideo as upload_video
+        from video_client import WaitForZoomedVideo as wait_for_zoomed
 
     qscript.PATH_TO_VIDEO_FOLDER = "./video"
 
@@ -80,10 +81,17 @@ def main():
             print("Uploaded: {}".format(url))
 
             try:
+                zoomed = wait_for_zoomed(args.server, company_name)
+                if zoomed:
+                    print("Zoomed: {}".format(zoomed))
+                    url = zoomed
+            except Exception as e:
+                print("ZOOM FAILED: {}: {}".format(company_name, e))
+
+            try:
                 preview(url, args.view_seconds)
             except Exception as e:
                 print("PREVIEW FAILED: {}: {}".format(company_name, e))
-
 
 if __name__ == "__main__":
     main()

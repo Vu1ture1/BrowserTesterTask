@@ -125,7 +125,7 @@ URL;Company Name;Language;Country;Postcode;City;Street;HouseNo
 
 ## Upload client
 
-`video_client.py` talks to the video service.
+`video_client.py` talks to the video upload web service.
 
 ```python
 from video_client import UploadVideo, GetVideoURL, WaitForZoomedVideo
@@ -151,15 +151,4 @@ The same calls are available from the command line for a quick manual check:
 ```bash
 python video_client.py upload http://127.0.0.1:8000 "video/Acme GmbH.webm" "ACME GmbH"
 python video_client.py get    http://127.0.0.1:8000 "ACME GmbH"
-python video_client.py zoomed http://127.0.0.1:8000 "ACME GmbH"
 ```
-
-## Project files
-
-| File | Purpose |
-|---|---|
-| `capture_video.py` | Reads `input.csv`, records each row, optionally uploads and previews |
-| `qscript.py` | Recording scenario: visible cursor, smooth mouse movement, zoom capture (F5, `__zoomAt`), sidecar writing |
-| `video_client.py` | Client for the video service (`UploadVideo`, `GetVideoURL`, `WaitForZoomedVideo`) |
-| `input.csv` | Input rows |
-| `video/` | Recorded videos and their `.zoom.json` sidecars |
